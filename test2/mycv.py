@@ -66,7 +66,7 @@ def myconv(img, myfilter):
 
 def mygrads(img):
     """
-    计算梯度,这里暂时使用的梯度算子是Sobel算子
+    计算梯度,这里暂时使用的梯度算子是 Scharr 算子
     :param img:
     :return: [grads, theta]
     """
@@ -218,7 +218,7 @@ def get_lines(edge):
             Q[rho, i] += 1
     """
     这里使用的方法是：Q.ravel()将Q横向展成一维数组X，然后npargsort()将X中的元素从小到大排列，提取其对应的index(索引)并输出到_X
-    然后[::-1]将_X中的索引倒序输出,[:N]取前N个索引，由此得到前十大的值的索引值
+    然后[::-1]将_X中的索引倒序输出,[:N]取前N个索引，由此得到前N大的值的索引值
     """
     N = 20
     X = Q.ravel()

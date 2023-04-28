@@ -4,9 +4,13 @@
 # 2023/04/27 09:07
 """
     图像处理自定义系列函数
+    conv
+    gaussian
     Grads
     Canny
     Hough
+    Harris
+    OTSU
     ...
 """
 import cv2 as cv
@@ -14,12 +18,20 @@ import numpy as np
 
 """ 梯度算子 """
 
+# Prewitt算子
+Prewitt_x = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
+Prewitt_y = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]])
 # Sobel算子
-# Sobel_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-# Sobel_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+Sobel_x = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+Sobel_y = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
 # Scharr算子
-Sobel_x = np.array([[-3, 0, 3], [-10, 0, 10], [-3, 0, 3]])
-Sobel_y = np.array([[-3, -10, -3], [0, 0, 0], [3, 10, 3]])
+Scharr_x = np.array([[-3, 0, 3], [-10, 0, 10], [-3, 0, 3]])
+Scharr_y = np.array([[-3, -10, -3], [0, 0, 0], [3, 10, 3]])
+
+G_opr_x = [Prewitt_x, Sobel_x, Scharr_x]
+G_opr_y = [Prewitt_y, Sobel_y, Scharr_y]
+
+""" 函数 """
 
 
 def myconv(img, myfilter):
@@ -64,14 +76,57 @@ def myconv(img, myfilter):
     return out
 
 
-def mygrads(img):
+def mygaussian(img, sigma=5, k_size=3):
     """
-    计算梯度,这里暂时使用的梯度算子是 Scharr 算子
-    :param img:
-    :return: [grads, theta]
+    Gaussian filter
+    Args:
+        img:  Input gray image that need to be processed
+        sigma:
+                The standard deviation of Gaussian kernel function.
+                Determines the shape of the Gaussian function.
+                The higher the value, the greater the degree of image blur.
+                Defaulting to 5.
+        k_size:
+                Represents the size of the Gaussian kernel function, i.e. the size of the filter.
+                Both length and width are odd numbers, such as (3, 3), (5, 5).
+                Default to 3.
+
+    Returns: Image after Gaussian filter
+
     """
-    gx = myconv(img, Sobel_x)
-    gy = myconv(img, Sobel_y)
+    H, W = img.shape[:2]
+    img_t = np.pad(img, (k_size // 2, k_size // 2), 'edge')
+    K = np.zeros((k_size, k_size), dtype=np.float32)
+    for x in range(k_size):
+        for y in range(k_size):
+            _x = x - k_size // 2
+            _y = y - k_size // 2
+            K[y, x] = np.exp(-(_x ** 2 + _y ** 2) / (2 * (sigma ** 2)))
+    K /= (sigma * np.sqrt(2 * np.pi))
+    K /= K.sum()
+
+    for y in range(H):
+        for x in range(W):
+            img[y, x] = np.sum(img_t[y:y + k_size, x:x + k_size] * K)
+    return img
+
+
+def mygrads(img, opr=1):
+    """
+    计算梯度,这里默认使用的梯度算子是 Scharr 算子
+    Args:
+        img: gray-image
+        opr:    operator
+                0 - Prewitt
+                1 - Sobel
+                2 - Scharr
+                ...
+
+    Returns:
+
+    """
+    gx = myconv(img, G_opr_x[opr])
+    gy = myconv(img, G_opr_y[opr])
     grads = np.sqrt(np.square(gx) + np.square(gy))
 
     theta = np.arctan2(gy, gx) * 180 / np.pi
@@ -97,7 +152,7 @@ def mycanny(img, lowTh=None, ratio=None, flag=None):
     # 梯度大小，方向，区域矩阵
     # grads = np.zeros((row, col))
     # theta = np.zeros((row, col))
-    [grads, theta] = mygrads(img)
+    [grads, theta] = mygrads(img, opr=2)
     sector = np.zeros((row, col))
     # 非极大值抑制
     canny1 = np.zeros((row, col))
@@ -192,18 +247,18 @@ def mycanny(img, lowTh=None, ratio=None, flag=None):
         return [grads, theta, sector, canny1, canny2, bins]
 
 
-def edge_detecting(img):
+def edge_detecting(img, sigma=10, k_size=3, lowTh=None, ratio=None):
     # Gray
     # 高斯降噪
     sigma = 10
     k_size = 3
     img = cv.GaussianBlur(img, (k_size, k_size), sigma)
     # canny检测
-    edges = mycanny(img, flag=3)
+    edges = mycanny(img, lowTh, ratio, flag=3)
     return edges
 
 
-def get_lines(edge):
+def get_lines(edge, N=10):
     dtheta = 1
     # rho能达到的最大值，rho = x*np.cos(theta)+y*np.sin(theta)，取整
     rhoMax = round(np.sqrt(np.square(edge.shape[0]) + np.square(edge.shape[1])))
@@ -220,7 +275,7 @@ def get_lines(edge):
     这里使用的方法是：Q.ravel()将Q横向展成一维数组X，然后npargsort()将X中的元素从小到大排列，提取其对应的index(索引)并输出到_X
     然后[::-1]将_X中的索引倒序输出,[:N]取前N个索引，由此得到前N大的值的索引值
     """
-    N = 20
+    # N = 20
     X = Q.ravel()
     _X = np.argsort(X)
     ind_x = _X[::-1][:N]
@@ -239,8 +294,7 @@ def get_lines(edge):
 
 
 def draw_lines(img, lines):
-    H, W, C = img.shape
-
+    H, W = img.shape[:2]
     [thetas, rhos] = lines
     for theta, rho in zip(thetas, rhos):
         t = np.pi / 180. * theta
@@ -260,5 +314,104 @@ def draw_lines(img, lines):
                 img[y, x] = [0, 0, 255]
     return img
     pass
+
+
+def myharris(img_gray, k=0.04, threshold=0.1):
+    ## Sobel
+    tmp = np.pad(img_gray, (1, 1), 'edge')
+
+    Ix = np.zeros_like(img_gray, dtype=np.float32)
+    Iy = np.zeros_like(img_gray, dtype=np.float32)
+
+    H, W = img_gray.shape[:2]
+    for y in range(H):
+        for x in range(W):
+            Ix[y, x] = np.sum(tmp[y:y + 3, x:x + 3] * Sobel_x)
+            Iy[y, x] = np.sum(tmp[y:y + 3, x:x + 3] * Sobel_y)
+
+    Ix2 = Ix ** 2
+    Iy2 = Iy ** 2
+    Ixy = Ix * Iy
+
+    ## gaussian
+    K_size = 3
+    sigma = 5
+
+    Ix2 = mygaussian(Ix2, sigma=sigma, k_size=K_size)
+    Iy2 = mygaussian(Iy2)
+    Ixy = mygaussian(Ixy)
+
+    ## select corner
+    R = (Ix2 * Iy2 - Ixy ** 2) - k * ((Ix2 + Iy2) ** 2)
+    corners = np.zeros_like(img_gray)
+    for i in range(H):
+        for j in range(W):
+            if R[i, j] >= np.max(R) * threshold:
+                corners[i, j] = 255
+
+    corners = corners.astype(np.uint8)
+    return corners
+
+
+def draw_corners(corners, img):
+    for y, lines in enumerate(corners):
+        for x, p in enumerate(lines):
+            if p:
+                cv.circle(img, (x, y), 5, [0, 0, 255])
+    # img[corners==255] = [0, 0, 255]
+    return img
+
+
+def otsu_threshold(gray_img):
+    """
+    最大类间方差法求阈值
+    Args:
+        gray_img: 灰度图
+
+    Returns:
+        threshold:  最佳阈值
+
+    """
+    # 总像素数
+    row, col = gray_img.shape[:2]
+    count_pixel = row * col
+    # 最佳阈值初始化
+    optimal_threshold = 0
+    # 最大类间方差初始化 (MAX of between-class variance)
+    bcv_max = -1
+    for i in range(1, 256):  # 两边不是阈值的可能的值
+        # 以i为阈值,分别计算两类的权重和均值
+        n1 = np.sum(gray_img < i)
+        n2 = count_pixel - n1
+        omega1 = n1 / count_pixel
+        omega2 = 1 - omega1
+        mu1 = np.sum(gray_img[gray_img < i]) / n1
+        mu2 = np.sum(gray_img[gray_img >= i]) / n2
+        # 计算类间方差
+        bcv = omega1 * omega2 * (mu1 - mu2) ** 2
+        # 更新类间方差的最大值和对应的阈值
+        if bcv > bcv_max:
+            bcv_max = bcv
+            optimal_threshold = i
+    return optimal_threshold
+
+
+def otsu_plus(gray_img, n):
+    """
+    大津法的扩展，可以进行多阈值分割
+    Args:
+        gray_img: 灰度图
+        n: 需要的阈值个数
+
+    Returns:
+        threshs: 1*n的阈值数组
+
+    """
+    _img = gray_img.copy()
+    thresh = np.array(otsu_threshold(_img))
+    _img[_img > thresh] = 0
+    if n == 1:
+        return thresh
+    return np.append(thresh, otsu_plus(_img, n - 1))
 
 # ========================= THE END ======================== #

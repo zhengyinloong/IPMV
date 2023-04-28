@@ -12,6 +12,4 @@
 - Hough直线检测
 - ...
 
-@ pyCharm
-
-@ NCEPU
+2023.04.28 @ NCEPU

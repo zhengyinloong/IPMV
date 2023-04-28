@@ -4,9 +4,12 @@
 # 2023/04/27 09:07
 """
     图像处理自定义系列函数
+    Grads
     Canny
+    Hough
+    ...
 """
-
+import cv2 as cv
 import numpy as np
 
 """ 梯度算子 """
@@ -139,10 +142,10 @@ def mycanny(img, lowTh=None, ratio=None, flag=None):
     # 自动生成低阈值和高阈值(比率)，该方法由试验得来，有待进一步检验
     if lowTh is None:
         lowTh = np.mean(canny1)
-        print("low threshold = ",lowTh)
+        print("low threshold = ", lowTh)
     if ratio is None:
         ratio = np.max(canny1) / np.mean(canny1) * 0.6
-        print("high threshold = ",ratio * lowTh)
+        print("high threshold = ", ratio * lowTh)
     higTh = ratio * lowTh  # 高阈值
     for i in range(1, row - 1):
         for j in range(1, col - 1):
@@ -176,7 +179,6 @@ def mycanny(img, lowTh=None, ratio=None, flag=None):
     canny2 = np.round(canny2)
     bins = np.round(bins)
 
-
     # 返回值分配
     if flag == 0:
         return grads
@@ -188,5 +190,75 @@ def mycanny(img, lowTh=None, ratio=None, flag=None):
         return bins
     else:
         return [grads, theta, sector, canny1, canny2, bins]
+
+
+def edge_detecting(img):
+    # Gray
+    # 高斯降噪
+    sigma = 10
+    k_size = 3
+    img = cv.GaussianBlur(img, (k_size, k_size), sigma)
+    # canny检测
+    edges = mycanny(img, flag=3)
+    return edges
+
+
+def get_lines(edge):
+    dtheta = 1
+    # rho能达到的最大值，rho = x*np.cos(theta)+y*np.sin(theta)，取整
+    rhoMax = round(np.sqrt(np.square(edge.shape[0]) + np.square(edge.shape[1])))
+    Q = np.zeros((rhoMax, 180))
+    # 得到Canny检测到的边缘点坐标
+    edge_y, edge_x = np.where(edge == 255)
+
+    for x, y in zip(edge_x, edge_y):
+        for i in range(0, 180, dtheta):
+            theta = i * np.pi / 180
+            rho = round(x * np.cos(theta) + y * np.sin(theta))
+            Q[rho, i] += 1
+    """
+    这里使用的方法是：Q.ravel()将Q横向展成一维数组X，然后npargsort()将X中的元素从小到大排列，提取其对应的index(索引)并输出到_X
+    然后[::-1]将_X中的索引倒序输出,[:N]取前N个索引，由此得到前十大的值的索引值
+    """
+    N = 20
+    X = Q.ravel()
+    _X = np.argsort(X)
+    ind_x = _X[::-1][:N]
+    ind_y = ind_x.copy()
+    # 得到相应的rho和theta,
+    thetas = ind_x % 180
+    rhos = ind_y // 180
+    # print(thetas,rhos)
+    # print(Q[rhos,thetas])
+    # _Q = np.zeros_like(Q)
+    # _Q[rhos,thetas] = 255
+    # cv.imshow('Q',Q)
+    # cv.imshow('_Q',_Q)
+
+    return [thetas, rhos]
+
+
+def draw_lines(img, lines):
+    H, W, C = img.shape
+
+    [thetas, rhos] = lines
+    for theta, rho in zip(thetas, rhos):
+        t = np.pi / 180. * theta
+        for x in range(W):
+            if np.sin(t) != 0:
+                y = - (np.cos(t) / np.sin(t)) * x + rho / np.sin(t)
+                y = int(y)
+                if y >= H or y < 0:
+                    continue
+                img[y, x] = [0, 0, 255]
+        for y in range(H):
+            if np.cos(t) != 0:
+                x = - (np.sin(t) / np.cos(t)) * y + rho / np.cos(t)
+                x = int(x)
+                if x >= W or x < 0:
+                    continue
+                img[y, x] = [0, 0, 255]
+    return img
+    pass
 
 # ========================= THE END ======================== #

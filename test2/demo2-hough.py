@@ -1,65 +1,72 @@
 # -*- coding:utf-8 -*-
 # demo2-hough.py
 # zhengyinloong
-# 2023/04/27 17:15
-import cv2 as cv
-import numpy as np
-import matplotlib.pyplot as plt
+# 2023/04/28 07:29
+"""
+霍夫直线检测
+"""
 from mycv import *
 
-def edge_detecting(img):
-    # Gray
-    # 高斯降噪
-    sigma = 10
-    k_size = 3
-    img = cv.GaussianBlur(img, (k_size, k_size), sigma)
 
-    # canny检测
-    edges = mycanny(img, flag=3)
-    return edges
+if __name__=="__main__":
+
+    IMG1 = "./10.jpg"
+    IMG2 = "./11.jpg"
+    IMG3 = "./12.jpg"
+    IMGS = [IMG1,IMG2,IMG3]
+
+    for i,IMG in enumerate(IMGS):
+        img = cv.imread(IMG, cv.IMREAD_GRAYSCALE)
+        # Canny 边缘检测
+        edge = edge_detecting(img)
+        # Hough直线检测
+        lines = get_lines(edge)
+        # 画线
+        img = cv.imread(IMG)
+        hough = draw_lines(img, lines)
+        # 显示
+        cv.imshow(f'edge{i+1}', edge)
+        cv.imshow(f'hough{i+1}', hough)
+        cv.resizeWindow(f'edge{i+1}', 350, 350)
+        cv.resizeWindow(f'hough{i+1}', 350, 350)
+        # 保存
+        cv.imwrite(f'edge{i+1}.jpg', edge, [cv.IMWRITE_JPEG_QUALITY, 100])
+        cv.imwrite(f'hough{i+1}.jpg', hough, [cv.IMWRITE_JPEG_QUALITY, 100])
 
 
-def hough_lines(img):
-
-    lines = np.zeros((3,3))
-    return lines
-    pass
-
-
-def line_detect(img):
-    edges = edge_detecting(img)
-    # 霍夫检测
-    # lines = hough_lines(img)
-    # # print(lines)
-    # print("Line Num : ", len(lines))
+    # img1 = cv.imread(IMG1,cv.IMREAD_GRAYSCALE)
+    # img2 = cv.imread(IMG2,cv.IMREAD_GRAYSCALE)
+    # img3 = cv.imread(IMG3,cv.IMREAD_GRAYSCALE)
+    # edge1 = edge_detecting(img1)
+    # edge2 = edge_detecting(img2)
+    # edge3 = edge_detecting(img3)
     #
-    # # 画出检测的线段
-    # for line in lines:
-    #     for x1, y1, x2, y2 in line:
-    #         cv.line(img, (x1, y1), (x2, y2), (255, 0, 0), 1)
-    #     pass
-    return img_with_lines
+    # lines1=get_lines(edge1)
+    # lines2=get_lines(edge2)
+    # lines3=get_lines(edge3)
+    #
+    # # 画线
+    # img1 = cv.imread(IMG1)
+    # img2 = cv.imread(IMG2)
+    # img3 = cv.imread(IMG3)
+    # hough1 = draw_lines(img1,lines1)
+    # hough2 = draw_lines(img2,lines2)
+    # hough3 = draw_lines(img3,lines3)
+    #
+    #
+    # # 显示
+    # cv.imshow('edge1',edge1)
+    # cv.imshow('edge2',edge2)
+    # cv.imshow('edge3',edge3)
+    # cv.imshow('hough1',hough1)
+    # cv.imshow('hough2',hough2)
+    # cv.imshow('hough3',hough3)
 
-# Read image
+    # Wait until a key pressed
+    cv.waitKey(0)
 
-IMG1 = "10.jpg"
-img1 = cv.imread(IMG1, cv.IMREAD_GRAYSCALE)
-
-# Hough
-drho = 1
-d = 1
-A = np.zeros((200,200),dtype=np.uint)
-
-img1 = line_detect(img1)
-cv.imshow("Hough",img1)
-
-
-# Wait until a key pressed
-cv.waitKey(0)
-
-# Destroy all the windows opened before
-cv.destroyAllWindows()
-
+    # Destroy all the windows opened before
+    cv.destroyAllWindows()
 
 
 

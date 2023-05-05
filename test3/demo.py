@@ -30,6 +30,7 @@ Harris = draw_corners(corners, Harris)
 # OTSU 语义分割
 # 得到最佳阈值
 threshold = otsu_threshold(gray)
+# 分割
 Otsu = np.zeros_like(gray)
 Otsu[gray>threshold]=255
 # 显示

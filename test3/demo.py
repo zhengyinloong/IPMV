@@ -4,7 +4,7 @@
 # 2023/04/28 23:53
 """
 Hough检测
-角点检测
+Harris角点检测
 OTSU法实现图像分割
 """
 from mycv import *

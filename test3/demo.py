@@ -27,7 +27,7 @@ Hough = draw_lines(Hough, lines)
 corners = myharris(Edge)
 Harris = img.copy()
 Harris = draw_corners(corners, Harris)
-# OTSU 语义分割
+# OTSU 图像分割
 # 得到最佳阈值
 threshold = otsu_threshold(gray)
 # 分割
